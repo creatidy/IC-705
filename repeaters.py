@@ -9,7 +9,21 @@ import sys
 import argparse
 
 
-def main(xml_file_path: str, countries: list[str], modes: list[str], bands: list[str]) -> None:
+def main(xml_file_path: str, countries_str: list[str], modes_str: list[str], bands_str: list[str]):
+    """
+    Main function that reads the XML file with repeaters and exports them to the CSV file.
+
+    Parameters:
+    :param xml_file_path: The path to the XML file.
+    :param countries_str: List of countries.
+    :param modes_str: List of modes.
+    :param bands_str: List of bands.
+    """
+
+    countries = countries_str[0].split(' ')
+    modes = modes_str[0].split(' ')
+    bands = bands_str[0].split(' ')
+    
     try:
         tree = ET.parse(xml_file_path)
         rxf = tree.getroot()
@@ -171,9 +185,9 @@ if __name__ == '__main__':
 
     parser = argparse.ArgumentParser(description='Process some parameters.')
     parser.add_argument('xml_file_path', type=str, help='The path to the XML file.')
-    parser.add_argument('--country', nargs='*', default=['pl'], help='List of countries. Default is ["pl"].')
-    parser.add_argument('--mode', nargs='*', default=['FM', 'DSTAR', 'FMLINK'], help='List of modes. Default is ["FM", "DSTAR", "FMLINK"].')
-    parser.add_argument('--band', nargs='*', default=['70CM', '2M'], help='List of bands. Default is ["70CM", "2M"].')
+    parser.add_argument('--country', nargs=1, default='pl', help='List of countries. Default is "pl".')
+    parser.add_argument('--mode', nargs=1, default='FM DSTAR FMLINK', help='List of modes. Default is "FM DSTAR FMLINK".')
+    parser.add_argument('--band', nargs=1, default='70CM 2M', help='List of bands. Default is "70CM 2M".')
     
     args = parser.parse_args()
     
