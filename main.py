@@ -1,28 +1,15 @@
-import xml.etree.ElementTree as ET
 import csv
 from typing import Any
 import regex as re
 from decimal import Decimal
 from unidecode import unidecode
+import xml.etree.ElementTree as ET
+import os
+import sys
+import argparse
 
 
-# The script reads the data from the XML file and exports it to the CSV file
-
-# The XML file contains information about the repeaters. 
-# The source of the XML file is http://przemienniki.net/
-xml_file_path = '../data/rxf.xml'
-
-# The CSV file format is compatible with the ICOM IC-705.
-# Upload the file to the radio using SD Card.
-repeaters_file_path = '../data/repeaters.csv'
-
-# Filters for the repeaters
-country = ['pl']
-mode = ['FM', "DSTAR", "FMLINK"]
-band = ['70CM', '2M']
-
-
-def main():
+def main(xml_file_path: str, countries: list[str], modes: list[str], bands: list[str]) -> None:
     try:
         tree = ET.parse(xml_file_path)
         rxf = tree.getroot()
@@ -39,10 +26,10 @@ def main():
     for item in dictionary.findall('item'):
         if item.find('type') is None:
             raise Exception('Type is missing in the item')
-        type = item.find('type').text
-        name = item.find('name').text
-        value = item.find('value').text 
-        description = item.find('description').text
+        type = item.find('type').text  # type: ignore
+        name = item.find('name').text  # type: ignore
+        value = item.find('value').text  # type: ignore
+        description = item.find('description').text  # type: ignore
         items[name] = {
             'type': type,
             'value': value,
@@ -126,15 +113,8 @@ def main():
             'feedback': feedback
         })
 
-    # Filter repeaters by the country
-    repeaters_list = [repeater for repeater in repeaters_list if repeater['country'] in country]
-
-    # Filter repeaters by the mode
-    repeaters_list = [repeater for repeater in repeaters_list if repeater['mode'] in mode]
-
-    # Filter repeaters by the band
-    repeaters_list = [repeater for repeater in repeaters_list if repeater['band'] in band]
-
+    # Filter repeaters by the country, mode, and band
+    repeaters_list = [repeater for repeater in repeaters_list if repeater['country'] in countries and repeater['mode'] in modes and repeater['band'] in bands]
     repeaters_list = sorted(repeaters_list, key=lambda x: x['qra'])
 
     # Export repeaters to the CSV file
@@ -144,7 +124,7 @@ def main():
     # 0,Poland,Moszna-Parcela,Poland,SR5WC  B,SR5WC  G,438.600000,DUP-,7.600000,DV,OFF,88.5Hz,YES,Approximate,52.180000,20.750000,+1:00
     # 0,Poland,W-wa Mokotow,Poland,SR5RR,,439.275000,DUP-,7.600000,FM,TONE,127.3Hz,NO,Exact,52.178667,21.050667,+1:00
 
-    # Prepare a data for the CSV file
+    # Prepare data for the CSV file
     export_data: list[dict[str, Any]] = []
     for repeater in repeaters_list:
         item = {
@@ -170,15 +150,31 @@ def main():
         export_data.append(item)
 
     # Export data to the CSV file
-    with open(repeaters_file_path, 'w', newline='') as csvfile:
+    csv_file_path = os.path.join(os.path.dirname(xml_file_path), 'repeaters.csv')
+    couner = 0
+    with open(csv_file_path, 'w', newline='') as csvfile:
         fieldnames = export_data[0].keys()
         writer = csv.DictWriter(csvfile, fieldnames=fieldnames)
 
         writer.writeheader()
         for item in export_data:
             writer.writerow(item)
+            couner += 1
         
-    print(f"Data has been exported to the CSV file: {repeaters_file_path}")
+    print(f"Data has been exported to the CSV file: {csv_file_path} with {couner} repeaters.")
+
 
 if __name__ == '__main__':
-    main()
+    if len(sys.argv) < 2:
+        print("Please provide the XML file path as a command line argument.")
+        sys.exit(1)
+
+    parser = argparse.ArgumentParser(description='Process some parameters.')
+    parser.add_argument('xml_file_path', type=str, help='The path to the XML file.')
+    parser.add_argument('--country', nargs='*', default=['pl'], help='List of countries. Default is ["pl"].')
+    parser.add_argument('--mode', nargs='*', default=['FM', 'DSTAR', 'FMLINK'], help='List of modes. Default is ["FM", "DSTAR", "FMLINK"].')
+    parser.add_argument('--band', nargs='*', default=['70CM', '2M'], help='List of bands. Default is ["70CM", "2M"].')
+    
+    args = parser.parse_args()
+    
+    main(args.xml_file_path, args.country, args.mode, args.band)
