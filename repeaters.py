@@ -7,9 +7,28 @@ import xml.etree.ElementTree as ET
 import os
 import sys
 import argparse
+import requests
 
 
-def main(xml_file_path: str, countries_str: list[str], modes_str: list[str], bands_str: list[str]):
+def download_xml_file() -> str | None:
+    """
+    Download the XML file with repeaters.
+    """
+
+    url = 'https://przemienniki.net/export/rxf.xml'
+    xml_file_path = os.path.join(os.path.dirname(__file__), 'repeaters.xml')
+    try:
+        response = requests.get(url)
+        with open(xml_file_path, 'wb') as f:
+            f.write(response.content)
+    except Exception as e:
+        print(f"An error occurred while downloading the XML file: {e}")
+        return None
+
+    return xml_file_path
+
+
+def main(xml_file_path: str, countries_str: str, modes_str: str, bands_str: str):
     """
     Main function that reads the XML file with repeaters and exports them to the CSV file.
 
@@ -20,9 +39,9 @@ def main(xml_file_path: str, countries_str: list[str], modes_str: list[str], ban
     :param bands_str: List of bands.
     """
 
-    countries = countries_str[0].split(' ')
-    modes = modes_str[0].split(' ')
-    bands = bands_str[0].split(' ')
+    countries = countries_str.split(' ')
+    modes = modes_str.split(' ')
+    bands = bands_str.split(' ')
     
     try:
         tree = ET.parse(xml_file_path)
@@ -179,16 +198,23 @@ def main(xml_file_path: str, countries_str: list[str], modes_str: list[str], ban
 
 
 if __name__ == '__main__':
-    if len(sys.argv) < 2:
-        print("Please provide the XML file path as a command line argument.")
-        sys.exit(1)
 
     parser = argparse.ArgumentParser(description='Process some parameters.')
-    parser.add_argument('xml_file_path', type=str, help='The path to the XML file.')
+    parser.add_argument('xml_file_path', type=str, nargs='?', default=None, help='The path to the XML file.')
     parser.add_argument('--country', nargs=1, default='pl', help='List of countries. Default is "pl".')
     parser.add_argument('--mode', nargs=1, default='FM DSTAR FMLINK', help='List of modes. Default is "FM DSTAR FMLINK".')
     parser.add_argument('--band', nargs=1, default='70CM 2M', help='List of bands. Default is "70CM 2M".')
     
     args = parser.parse_args()
-    
-    main(args.xml_file_path, args.country, args.mode, args.band)
+
+    if len(sys.argv) < 2:
+        # Download the XML file with repeaters
+        xml_file_path = download_xml_file()
+    else:
+        xml_file_path = args.xml_file_path
+        
+    if xml_file_path is None:
+        print("The XML file is missing.")
+        sys.exit(1)
+        
+    main(xml_file_path, args.country, args.mode, args.band)
